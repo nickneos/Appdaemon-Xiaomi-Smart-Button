@@ -1,3 +1,8 @@
+"""
+Customise what happens when you press a Xiaomi Wireless Button
+https://github.com/so3n/Appdaemon-Xiaomi-Smart-Button
+"""
+
 import appdaemon.plugins.hass.hassapi as hass
 
 # default values
@@ -13,10 +18,8 @@ ACTION_TYPE_OPTIONS = [
 ]
 
 class Button(hass.Hass):
-    """ """
 
     def initialize(self):
-        """ """
         self.buttons = self.args.get("buttons", [])
         self.actions = self.args.get("actions", [])
         
@@ -29,6 +32,7 @@ class Button(hass.Hass):
 
     def cb_button_press(self, event_name, data, kwargs):
         """ Callback function when button is pressed """
+
         event_click = data["click_type"]
         button = kwargs["entity_id"]
         
@@ -41,6 +45,7 @@ class Button(hass.Hass):
 
     def perform_action(self, action):
         """ Perform action based on the type of the action """
+
         action_type = action.get("action_type", DEFAULT_ACTION_TYPE)
         dim_step_value = action.get("dim_step_value", DEFAULT_DIM_STEP_VALUE)
         tgt_devs = action.get("target_device", [])
@@ -64,6 +69,7 @@ class Button(hass.Hass):
 
     def turn_on_action(self, device):
         """ turns on device """
+
         if self.get_state(device) == "on":
             self.log(f"{device} already on")
             return
@@ -73,6 +79,7 @@ class Button(hass.Hass):
 
     def turn_off_action(self, device):
         """ turns off device """
+
         if self.get_state(device) == "off":
             self.log(f"{device} already off")
             return
@@ -82,11 +89,13 @@ class Button(hass.Hass):
 
     def toggle_action(self, device):
         """ toggles device """
+
         self.log(f"Toggle {device}")
         self.toggle(device)
     
     def dim_action(self, light, dim_step):
         """ increments brightness of light """
+        
         if self.get_state(light) == "off":
             self.call_service("light/turn_on", entity_id = light)
         else:
