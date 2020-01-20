@@ -1,10 +1,11 @@
 import appdaemon.plugins.hass.hassapi as hass
 
 # default values
-DEFAULT_SERVICE = "turn_on"
+DEFAULT_ACTION_TYPE = "toggle"
+DEFAULT_CLICK_TYPE = "single"
 DEFAULT_DIM_STEP_VALUE = 3
 
-SERVICE_OPTIONS = [
+ACTION_TYPE_OPTIONS = [
     "turn_on",
     "turn_off",
     "toggle",
@@ -22,7 +23,7 @@ class Button(hass.Hass):
         if type(self.buttons) is not list:
             self.buttons = [self.buttons]
 
-        for button in self.args["buttons"]:
+        for button in self.buttons:
             self.listen_event(self.cb_button_press, "xiaomi_aqara.click",
                               entity_id = button)
 
@@ -32,35 +33,36 @@ class Button(hass.Hass):
         button = kwargs["entity_id"]
         
         for action in self.actions:
-            if event_click == action["click_type"]:
+            click_type = action.get("click_type", DEFAULT_CLICK_TYPE)
+            if event_click == click_type:
                 self.log(f"{button}: {action}")
                 self.perform_action(action)
                 break
 
     def perform_action(self, action):
-        """ Perform action based on the service of the action """
-        service = action.get("service", DEFAULT_SERVICE)
+        """ Perform action based on the type of the action """
+        action_type = action.get("action_type", DEFAULT_ACTION_TYPE)
         dim_step_value = action.get("dim_step_value", DEFAULT_DIM_STEP_VALUE)
         tgt_devs = action.get("target_device", [])
 
-        if service not in SERVICE_OPTIONS:
-            self.log("Service not valid option")
+        if action_type not in ACTION_TYPE_OPTIONS:
+            self.log("Action Type not valid option")
             return
 
         if type(tgt_devs) is not list:
             tgt_devs = [tgt_devs]
 
         for device in tgt_devs:
-            if service == "turn_on":
-                self.turn_on_service(device)
-            elif service == "turn_off":
-                self.turn_off_service(device)
-            elif service == "toggle":
-                self.toggle_service(device)
-            elif service == "dim_step":
-                self.dim_service(device, dim_step_value)
+            if action_type == "turn_on":
+                self.turn_on_action(device)
+            elif action_type == "turn_off":
+                self.turn_off_action(device)
+            elif action_type == "toggle":
+                self.toggle_action(device)
+            elif action_type == "dim_step":
+                self.dim_action(device, dim_step_value)
 
-    def turn_on_service(self, device):
+    def turn_on_action(self, device):
         """ turns on device """
         if self.get_state(device) == "on":
             self.log(f"{device} already on")
@@ -69,7 +71,7 @@ class Button(hass.Hass):
         self.log(f"Turning on {device}")
         self.turn_on(device)
 
-    def turn_off_service(self, device):
+    def turn_off_action(self, device):
         """ turns off device """
         if self.get_state(device) == "off":
             self.log(f"{device} already off")
@@ -78,12 +80,12 @@ class Button(hass.Hass):
         self.log(f"Turning off {device}")
         self.turn_off(device)
 
-    def toggle_service(self, device):
+    def toggle_action(self, device):
         """ toggles device """
         self.log(f"Toggle {device}")
         self.toggle(device)
     
-    def dim_service(self, light, dim_step):
+    def dim_action(self, light, dim_step):
         """ increments brightness of light """
         if self.get_state(light) == "off":
             self.call_service("light/turn_on", entity_id = light)
