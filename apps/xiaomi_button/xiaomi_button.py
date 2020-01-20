@@ -19,6 +19,9 @@ class Button(hass.Hass):
         self.buttons = self.args.get("buttons", [])
         self.actions = self.args.get("actions", [])
         
+        if type(self.buttons) is not list:
+            self.buttons = [self.buttons]
+
         for button in self.args["buttons"]:
             self.listen_event(self.cb_button_press, "xiaomi_aqara.click",
                               entity_id = button)
@@ -39,11 +42,13 @@ class Button(hass.Hass):
         service = action.get("service", DEFAULT_SERVICE)
         dim_step_value = action.get("dim_step_value", DEFAULT_DIM_STEP_VALUE)
         tgt_devs = action.get("target_device", [])
-        tgt_devs = tgt_devs if type(tgt_devs) is list else [tgt_devs]
 
         if service not in SERVICE_OPTIONS:
             self.log("Service not valid option")
             return
+
+        if type(tgt_devs) is not list:
+            tgt_devs = [tgt_devs]
 
         for device in tgt_devs:
             if service == "turn_on":
@@ -99,4 +104,3 @@ class Button(hass.Hass):
         human readable
         """
         return round(int(float(number)) / 255 * 100)
-
