@@ -32,12 +32,12 @@ Install via [HACS](https://hacs.xyz/). Alternatively, place the apps folder and 
 
 ### `Actions` Config Options
 
-| Variable       | Type    | Required | Default | Description                                                                                                                                                                                          |
-| -------------- | ------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| click_type     | string  | False    | single  | For buttons that support multiple click types (eg. single click, double click and long press) specify which one to trigger the doorbell. Valid options are `single`, `double` and `long_click_press` |
-| target_device  | string  | True     |         | `entity_id` of the device that responds to button press. Can include multiple entities in a list or just one as a string                                                                             |
-| action_type    | string  | False    | toggle  | Valid options are `turn_on`, `turn_off`, `toggle` and `dim_step`                                                                                                                                     |
-| dim_step_value | integer | False    | 3       | For `dim_step` `action_type`, the number of steps to cycle through brightness increments. (eg. value of 3 will cycle through 33%, 66% and 100% brightness)                                           |
+| Variable       | Type    | Required | Default | Description                                                                                                                                                                                                                           |
+| -------------- | ------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| click_type     | string  | False    | single  | For buttons that support multiple click types (eg. single click, double click and long press) specify which one to trigger the doorbell. Valid options are `single`, `double` and `long_click_press`                                  |
+| target_device  | string  | True     |         | The device that responds to button press. Generally this will be the `entity_id` of the device, however a special case is the string `lights` to control all lights. Can include multiple entities in a list or just one as a string. |
+| action_type    | string  | False    | toggle  | Valid options are `turn_on`, `turn_off`, `toggle` and `dim_step`                                                                                                                                                                      |
+| dim_step_value | integer | False    | 3       | For `dim_step` `action_type`, the number of steps to cycle through brightness increments. (eg. value of 3 will cycle through 33%, 66% and 100% brightness)                                                                            |
 
 ### Example usage 1
 Bedside buttons that perform the following actions:
@@ -61,7 +61,7 @@ bedroom_buttons:
       action_type: toggle
     - click_type: long_click_press
       target_device: 
-        - group.all_lights
+        - lights
         - remote.living_room
         - climate.main
       action_type: turn_off
