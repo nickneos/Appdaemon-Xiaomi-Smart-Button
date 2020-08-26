@@ -16,6 +16,11 @@ ACTION_TYPE_OPTIONS = [
     "toggle",
     "dim_step"
 ]
+ALL_LIGHTS_NAME = [
+    "lights",
+    "all_lights",
+    "group.all_lights"
+]
 
 class Button(hass.Hass):
 
@@ -30,6 +35,7 @@ class Button(hass.Hass):
             self.listen_event(self.cb_button_press, "xiaomi_aqara.click",
                               entity_id = button)
 
+
     def cb_button_press(self, event_name, data, kwargs):
         """ Callback function when button is pressed """
 
@@ -39,9 +45,10 @@ class Button(hass.Hass):
         for action in self.actions:
             click_type = action.get("click_type", DEFAULT_CLICK_TYPE)
             if event_click == click_type:
-                self.log(f"{button}: {action}")
+                self.log("%s: %s", button, action, level="DEBUG")
                 self.perform_action(action)
                 break
+
 
     def perform_action(self, action):
         """ Perform action based on the type of the action """
@@ -51,7 +58,7 @@ class Button(hass.Hass):
         tgt_devs = action.get("target_device", [])
 
         if action_type not in ACTION_TYPE_OPTIONS:
-            self.log("Action Type not valid option")
+            self.log("Action Type not valid option", level="ERROR")
             return
 
         if type(tgt_devs) is not list:
@@ -67,44 +74,46 @@ class Button(hass.Hass):
             elif action_type == "dim_step":
                 self.dim_action(device, dim_step_value)
 
+
     def turn_on_action(self, device):
         """ turns on device """
 
-        if device == "lights":
-            for entity_id in self.get_state('light'):
-                if self.get_state(entity_id) == "off":
-                    self.turn_on(entity_id)
+        if device in ALL_LIGHTS_NAME:
+            self.log("Turning on all lights", level="DEBUG")
+            self.call_service("light/turn_on", entity_id = "all")
             return
             
         if self.get_state(device) == "on":
-            self.log(f"{device} already on")
+            self.log("%s already on", device, level="DEBUG")
             return
 
-        self.log(f"Turning on {device}")
+        self.log("Turning on %s", device, level="DEBUG")
         self.turn_on(device)
+
 
     def turn_off_action(self, device):
         """ turns off device """
 
-        if device == "lights":
-            for entity_id in self.get_state('light'):
-                if self.get_state(entity_id) == "on":
-                    self.turn_off(entity_id)
+        if device in ALL_LIGHTS_NAME:
+            self.log("Turning off all lights", level="DEBUG")
+            self.call_service("light/turn_off", entity_id = "all")
             return
             
         if self.get_state(device) == "off":
-            self.log(f"{device} already off")
+            self.log("%s already off", device, level="DEBUG")
             return
 
-        self.log(f"Turning off {device}")
+        self.log("Turning off %s", device, level="DEBUG")
         self.turn_off(device)
+
 
     def toggle_action(self, device):
         """ toggles device """
 
-        self.log(f"Toggle {device}")
+        self.log("Toggle %s", device, level="DEBUG")
         self.toggle(device)
     
+
     def dim_action(self, light, dim_step):
         """ increments brightness of light """
         
