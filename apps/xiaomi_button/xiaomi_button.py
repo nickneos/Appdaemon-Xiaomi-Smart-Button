@@ -1,6 +1,6 @@
 """
 Customise what happens when you press a Xiaomi Wireless Button
-https://github.com/so3n/Appdaemon-Xiaomi-Smart-Button
+https://github.com/nickneos/Appdaemon-Xiaomi-Smart-Button
 """
 
 import appdaemon.plugins.hass.hassapi as hass
@@ -14,7 +14,8 @@ ACTION_TYPE_OPTIONS = [
     "turn_on",
     "turn_off",
     "toggle",
-    "dim_step"
+    "dim_step",
+    "cycle"
 ]
 ALL_LIGHTS_NAME = [
     "lights",
@@ -23,29 +24,34 @@ ALL_LIGHTS_NAME = [
 ]
 
 class Button(hass.Hass):
+    """Define a Xiaomi Switch base feature"""
 
     def initialize(self):
+        """Initialize AppDaemon App"""
+
+        # get config values
         self.buttons = self.args.get("buttons", [])
         self.actions = self.args.get("actions", [])
+
+        # integer counter used for cycle function
+        self.cycle_idx = -1
         
+        # convert buttons to list
         if type(self.buttons) is not list:
             self.buttons = [self.buttons]
 
+
         for button in self.buttons:
-            self.listen_event(self.cb_button_press, "xiaomi_aqara.click",
-                              entity_id = button)
+            self.listen_event(self.cb_button_press, "xiaomi_aqara.click", entity_id = button)
 
 
     def cb_button_press(self, event_name, data, kwargs):
-        """ Callback function when button is pressed """
+        """Callback function when button is pressed"""
 
-        event_click = data["click_type"]
-        button = kwargs["entity_id"]
+        button_event = data["click_type"]
         
-        for action in self.actions:
-            click_type = action.get("click_type", DEFAULT_CLICK_TYPE)
-            if event_click == click_type:
-                self.log("%s: %s", button, action, level="DEBUG")
+        for action in self.actions: 
+            if button_event == action.get("click_type", DEFAULT_CLICK_TYPE):
                 self.perform_action(action)
                 break
 
@@ -56,6 +62,7 @@ class Button(hass.Hass):
         action_type = action.get("action_type", DEFAULT_ACTION_TYPE)
         dim_step_value = action.get("dim_step_value", DEFAULT_DIM_STEP_VALUE)
         tgt_devs = action.get("target_device", [])
+        parameters = action.get("parameters", {})
 
         if action_type not in ACTION_TYPE_OPTIONS:
             self.log("Action Type not valid option", level="ERROR")
@@ -64,54 +71,39 @@ class Button(hass.Hass):
         if type(tgt_devs) is not list:
             tgt_devs = [tgt_devs]
 
-        for device in tgt_devs:
-            if action_type == "turn_on":
-                self.turn_on_action(device)
-            elif action_type == "turn_off":
-                self.turn_off_action(device)
-            elif action_type == "toggle":
-                self.toggle_action(device)
-            elif action_type == "dim_step":
-                self.dim_action(device, dim_step_value)
+        for entity in tgt_devs:
 
-
-    def turn_on_action(self, device):
-        """ turns on device """
-
-        if device in ALL_LIGHTS_NAME:
-            self.log("Turning on all lights", level="DEBUG")
-            self.call_service("light/turn_on", entity_id = "all")
-            return
+            # handle dim_step action
+            if action_type == "dim_step":
+                self.dim_action(entity, dim_step_value)
+                self.cycle_idx = -1
+                return
             
-        if self.get_state(device) == "on":
-            self.log("%s already on", device, level="DEBUG")
-            return
+            # handle cycle action
+            if action_type == "cycle":
+                parameters = [parameters] if type(parameters) is not list else parameters
+                self.cycle_action(entity, parameters)
+                return
 
-        self.log("Turning on %s", device, level="DEBUG")
-        self.turn_on(device)
+            # reset index to -1 on turn_off
+            if action_type == "turn_off":
+                self.cycle_idx = -1
 
+            # handle entity for all lights
+            if entity in ALL_LIGHTS_NAME:
+                self.call_service(
+                    f"light/{action_type}", 
+                    entity_id="all", 
+                    **parameters
+                )
+                return
 
-    def turn_off_action(self, device):
-        """ turns off device """
-
-        if device in ALL_LIGHTS_NAME:
-            self.log("Turning off all lights", level="DEBUG")
-            self.call_service("light/turn_off", entity_id = "all")
-            return
-            
-        if self.get_state(device) == "off":
-            self.log("%s already off", device, level="DEBUG")
-            return
-
-        self.log("Turning off %s", device, level="DEBUG")
-        self.turn_off(device)
-
-
-    def toggle_action(self, device):
-        """ toggles device """
-
-        self.log("Toggle %s", device, level="DEBUG")
-        self.toggle(device)
+            # lets do this
+            self.call_service(
+                f"{entity.split('.')[0]}/{action_type}",
+                entity_id=entity,
+                **parameters
+            )
     
 
     def dim_action(self, light, dim_step):
@@ -128,6 +120,32 @@ class Button(hass.Hass):
                 if brightness > 100:
                     brightness = dim_step_pct
                 self.call_service("light/turn_on", entity_id = light, brightness_pct = brightness)
+
+
+    def cycle_action(self, light, param_list):
+        """Cycle through the parameter list with each button press"""
+
+        # when index -1, turn on light with previous settings
+        if self.cycle_idx == -1:
+            parameters = {}
+        # otherwise get paramaters from list using index value
+        else:
+            try:
+                parameters = param_list[self.cycle_idx]
+            except IndexError:
+                self.cycle_idx = 0
+                parameters = param_list[self.cycle_idx]
+
+        # lets do this
+        self.call_service(
+            f"{light.split('.')[0]}/turn_on",
+            entity_id=light,
+            **parameters
+        )
+
+        # increment index for next button press
+        self.cycle_idx += 1
+
 
 
     def bound_to_100(self, number):
